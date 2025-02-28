@@ -1,5 +1,5 @@
 from bson import ObjectId
-from fastapi import FastAPI, HTTPException,status
+from fastapi import FastAPI, HTTPException, Query,status
 from app.Models.UpdateUser import UpdateUser
 from app.Models.User import User
 from .db import MongoDB
@@ -41,13 +41,14 @@ def user_helper(user) -> dict:
     }
 
 @app.get('/users')
-async def getusers():
+async def getusers(skip:int=Query(0, ge=0), limit:int=Query(10,ge=1)):
     try:
         # Initialize MongoDB connection
         mongo_instance = MongoDB(db_name=sampleDb, collection_name=sampleDb_users)
         collection = mongo_instance.get_collection()
-        users = await collection.find().to_list(100)
-        return {"users": [user_helper(user) for user in users]}
+        total_users = await collection.count_documents({})
+        users = await collection.find().skip(skip).limit(limit).to_list(length=limit)
+        return {"total": total_users, "users": [user_helper(user) for user in users]}
     except Exception as e:
         logger.error(f"Error fetching users: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
